@@ -24,7 +24,10 @@
     "ios",
     "react-native"
   ],
-  "repository": "https://github.com/gabo2151/expo-window-brightness",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gabo2151/expo-window-brightness.git"
+  },
   "bugs": {
     "url": "https://github.com/gabo2151/expo-window-brightness/issues"
   },

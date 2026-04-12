@@ -1,0 +1,43 @@
+{
+  "name": "expo-window-brightness",
+  "version": "0.1.0",
+  "description": "Expo Window Brightness",
+  "main": "build/index.js",
+  "types": "build/index.d.ts",
+  "scripts": {
+    "build": "expo-module build",
+    "clean": "expo-module clean",
+    "lint": "expo-module lint",
+    "test": "expo-module test",
+    "prepare": "expo-module prepare",
+    "prepublishOnly": "expo-module prepublishOnly",
+    "expo-module": "expo-module",
+    "open:ios": "xed example/ios",
+    "open:android": "open -a \"Android Studio\" example/android"
+  },
+  "keywords": [
+    "react-native",
+    "expo",
+    "expo-window-brightness",
+    "ExpoWindowBrightness"
+  ],
+  "repository": "https://github.com/gabo2151/expo-window-brightness",
+  "bugs": {
+    "url": "https://github.com/gabo2151/expo-window-brightness/issues"
+  },
+  "author": "Gabriel <gabriel@galilea.xyz> (https://github.com/gabo2151)",
+  "license": "GPL-3.0-or-later",
+  "homepage": "https://github.com/gabo2151/expo-window-brightness#readme",
+  "dependencies": {},
+  "devDependencies": {
+    "@types/react": "~19.1.1",
+    "expo-module-scripts": "^55.0.2",
+    "expo": "^55.0.11",
+    "react-native": "0.82.1"
+  },
+  "peerDependencies": {
+    "expo": ">=52.0.0",
+    "react": ">=18.0.0",
+    "react-native": ">=0.71.0"
+  }
+}

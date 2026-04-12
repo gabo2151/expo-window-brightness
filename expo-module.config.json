@@ -1,0 +1,9 @@
+{
+  "platforms": ["apple", "android"],
+  "apple": {
+    "modules": ["ExpoWindowBrightnessModule"]
+  },
+  "android": {
+    "modules": ["expo.modules.windowbrightness.ExpoWindowBrightnessModule"]
+  }
+}

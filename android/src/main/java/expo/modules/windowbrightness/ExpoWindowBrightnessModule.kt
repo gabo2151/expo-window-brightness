@@ -2,50 +2,70 @@ package expo.modules.windowbrightness
 
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
+import expo.modules.kotlin.exception.CodedException
 import android.view.WindowManager
-
 
 class ExpoWindowBrightnessModule : Module() {
   override fun definition() = ModuleDefinition {
     Name("ExpoWindowBrightness")
 
-    Function("setBrightness") { value: Float ->
-      val activity = appContext.currentActivity
-      activity?.runOnUiThread {
-        val window = activity.window
-        val layoutParams = window.attributes
+    // MARK: - setBrightness
+    // Runs on the UI thread via runOnUiThread and throws a typed exception
+    // when no activity is available or the value is out of range.
+    AsyncFunction("setBrightness") { value: Float ->
+      if (value < 0f || value > 1f) {
+        throw BrightnessRangeException(value)
+      }
 
-        // Ensure the value is safely within the 0.0 to 1.0 range
-        layoutParams.screenBrightness = value.coerceIn(0.0f, 1.0f)
-        window.attributes = layoutParams
+      val activity = appContext.currentActivity
+        ?: throw NoActivityException()
+
+      activity.runOnUiThread {
+        val layoutParams = activity.window.attributes
+        layoutParams.screenBrightness = value.coerceIn(0f, 1f)
+        activity.window.attributes = layoutParams
       }
     }
 
-    Function("restoreBrightness") {
+    // MARK: - restoreBrightness
+    // Resets the window-level override so the system / auto-brightness
+    // setting takes over again.
+    AsyncFunction("restoreBrightness") {
       val activity = appContext.currentActivity
-      activity?.runOnUiThread {
-        val window = activity.window
-        val layoutParams = window.attributes
+        ?: throw NoActivityException()
 
-        // Restores the window brightness to the system default behavior
+      activity.runOnUiThread {
+        val layoutParams = activity.window.attributes
         layoutParams.screenBrightness = WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
-        window.attributes = layoutParams
+        activity.window.attributes = layoutParams
       }
     }
 
-    // Added for parity with iOS.
-    // Note: If the brightness hasn't been overridden, Android returns a negative value (usually -1.0)
-    Function("getBrightness") {
-      var currentBrightness = -1.0f
+    // MARK: - getBrightness
+    // Returns the current window-level brightness override.
+    // Returns -1.0 when no override is set (system brightness is active),
+    // which matches WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE.
+    AsyncFunction("getBrightness") {
       val activity = appContext.currentActivity
+        ?: throw NoActivityException()
 
-      activity?.let {
-        val layoutParams = it.window.attributes
-        currentBrightness = layoutParams.screenBrightness
-      }
-
-      return@Function currentBrightness
+      activity.window.attributes.screenBrightness
     }
-
   }
 }
+
+// ---------------------------------------------------------------------------
+// Typed exceptions — surfaces as structured errors on the JS side
+// ---------------------------------------------------------------------------
+
+internal class BrightnessRangeException(value: Float) : CodedException(
+  "ERR_BRIGHTNESS_RANGE",
+  "Brightness value must be between 0.0 and 1.0, got $value",
+  null
+)
+
+internal class NoActivityException : CodedException(
+  "ERR_NO_ACTIVITY",
+  "Cannot change brightness: no active Android Activity found",
+  null
+)

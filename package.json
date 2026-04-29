@@ -1,9 +1,12 @@
 {
   "name": "@gabo2151/expo-window-brightness",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Expo module to control screen brightness at the window level",
   "main": "build/index.js",
   "types": "build/index.d.ts",
+  "license": "MIT",
+  "author": "Gabriel <gabriel@galilea.xyz> (https://github.com/gabo2151)",
+  "homepage": "https://github.com/gabo2151/expo-window-brightness#readme",
   "scripts": {
     "build": "expo-module build",
     "clean": "expo-module clean",
@@ -31,19 +34,19 @@
   "bugs": {
     "url": "https://github.com/gabo2151/expo-window-brightness/issues"
   },
-  "author": "Gabriel <gabriel@galilea.xyz> (https://github.com/gabo2151)",
-  "license": "GPL-3.0-or-later",
-  "homepage": "https://github.com/gabo2151/expo-window-brightness#readme",
   "dependencies": {},
   "devDependencies": {
-    "@types/react": "~19.1.1",
-    "expo-module-scripts": "^55.0.2",
-    "expo": "^55.0.11",
-    "react-native": "0.82.1"
+    "@types/react": "~19.2.14",
+    "expo-module-scripts": "~55.0.2",
+    "expo": "~55.0.18",
+    "react-native": "0.83.9"
   },
   "peerDependencies": {
     "expo": ">=52.0.0",
     "react": ">=18.0.0",
     "react-native": ">=0.71.0"
+  },
+  "engines": {
+    "node": ">=20.19.0"
   }
 }

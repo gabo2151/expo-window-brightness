@@ -3,6 +3,7 @@ package expo.modules.windowbrightness
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 import expo.modules.kotlin.exception.CodedException
+import expo.modules.kotlin.functions.Queues
 import android.view.WindowManager
 
 class ExpoWindowBrightnessModule : Module() {
@@ -10,8 +11,8 @@ class ExpoWindowBrightnessModule : Module() {
     Name("ExpoWindowBrightness")
 
     // MARK: - setBrightness
-    // Runs on the UI thread via runOnUiThread and throws a typed exception
-    // when no activity is available or the value is out of range.
+    // Runs directly on the UI thread (runOnQueue(Queues.MAIN)) so the returned
+    // promise resolves *after* the window attributes have been applied.
     AsyncFunction("setBrightness") { value: Float ->
       if (value < 0f || value > 1f) {
         throw BrightnessRangeException(value)
@@ -20,12 +21,10 @@ class ExpoWindowBrightnessModule : Module() {
       val activity = appContext.currentActivity
         ?: throw NoActivityException()
 
-      activity.runOnUiThread {
-        val layoutParams = activity.window.attributes
-        layoutParams.screenBrightness = value.coerceIn(0f, 1f)
-        activity.window.attributes = layoutParams
-      }
-    }
+      val layoutParams = activity.window.attributes
+      layoutParams.screenBrightness = value
+      activity.window.attributes = layoutParams
+    }.runOnQueue(Queues.MAIN)
 
     // MARK: - restoreBrightness
     // Resets the window-level override so the system / auto-brightness
@@ -34,12 +33,10 @@ class ExpoWindowBrightnessModule : Module() {
       val activity = appContext.currentActivity
         ?: throw NoActivityException()
 
-      activity.runOnUiThread {
-        val layoutParams = activity.window.attributes
-        layoutParams.screenBrightness = WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
-        activity.window.attributes = layoutParams
-      }
-    }
+      val layoutParams = activity.window.attributes
+      layoutParams.screenBrightness = WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
+      activity.window.attributes = layoutParams
+    }.runOnQueue(Queues.MAIN)
 
     // MARK: - getBrightness
     // Returns the current window-level brightness override.
@@ -50,7 +47,7 @@ class ExpoWindowBrightnessModule : Module() {
         ?: throw NoActivityException()
 
       activity.window.attributes.screenBrightness
-    }
+    }.runOnQueue(Queues.MAIN)
   }
 }
 

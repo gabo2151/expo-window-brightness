@@ -2,6 +2,11 @@ import ExpoModulesCore
 
 
 public class ExpoWindowBrightnessModule: Module {
+    // Brightness value captured right before our first override in this session.
+    // Used by `restoreBrightness()` to bring the screen back to what the user
+    // had before the app started overriding it.
+    private var initialBrightness: CGFloat?
+
     public func definition() -> ModuleDefinition {
         Name("ExpoWindowBrightness")
 
@@ -17,19 +22,27 @@ public class ExpoWindowBrightnessModule: Module {
                 return
             }
             DispatchQueue.main.async {
+                // Remember the pre-override brightness the first time we touch it.
+                if self.initialBrightness == nil {
+                    self.initialBrightness = UIScreen.main.brightness
+                }
                 UIScreen.main.brightness = CGFloat(value)
                 promise.resolve(nil)
             }
         }
 
         // MARK: - restoreBrightness
-        // iOS does not expose a "system brightness" API, so we leave the screen
-        // brightness as-is and simply resolve.  Documented in the JS wrapper.
+        // iOS exposes no "system brightness" API, so we restore the brightness
+        // that was present before the first `setBrightness` call in this session.
+        // If we never overrode the brightness, this is a no-op.
         AsyncFunction("restoreBrightness") { (promise: Promise) in
-            // No-op on iOS: there is no public API to read the ambient/system
-            // brightness and restore it.  Resolves immediately so callers can
-            // treat both platforms uniformly.
-            promise.resolve(nil)
+            DispatchQueue.main.async {
+                if let initial = self.initialBrightness {
+                    UIScreen.main.brightness = initial
+                    self.initialBrightness = nil
+                }
+                promise.resolve(nil)
+            }
         }
 
         // MARK: - getBrightness

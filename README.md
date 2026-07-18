@@ -5,7 +5,9 @@
 [![npm downloads](https://img.shields.io/npm/dm/@gabo2151/expo-window-brightness)](https://npm-stat.com/charts.html?package=@gabo2151/expo-window-brightness)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-A simple, lightweight Expo module to control screen brightness at the window level. It overrides the brightness only while your app is in the foreground, without requiring invasive system-level permissions (like `WRITE_SETTINGS` on Android).
+A tiny, zero-dependency Expo module to control screen brightness at the **window** level. It overrides the brightness only while your app is in the foreground and **never declares any Android permission** — no `WRITE_SETTINGS`, no runtime prompts.
+
+> **Why not `expo-brightness`?** The official [`expo-brightness`](https://docs.expo.dev/versions/latest/sdk/brightness/) also supports window-level brightness, but because it additionally exposes the global *system* brightness API, its config plugin declares `android.permission.WRITE_SETTINGS`. If all you need is to brighten your own app while it's in the foreground, this module does exactly that with a 3-function API and no permissions.
 
 ## Installation
 
@@ -74,28 +76,12 @@ Returns the current brightness level as a number in `[0.0, 1.0]`.
 
 ### `restoreBrightness(): Promise<void>`
 
-Removes the brightness override and returns control to the system.
+Restores the brightness to the value it had before your app started overriding it.
 
 - On **Android**, clears the window-level override (`BRIGHTNESS_OVERRIDE_NONE`). The system or auto-brightness setting takes over immediately.
-- On **iOS**, this is a **no-op** — Apple does not provide a public API to restore the system brightness. To achieve a restore effect on iOS, capture the initial brightness with `getBrightness()` when your component mounts and call `setBrightness(initialValue)` manually:
+- On **iOS**, restores the brightness captured right before the **first** `setBrightness()` call of the current session. If `setBrightness()` was never called, it's a no-op (Apple exposes no public system-brightness API).
 
-```tsx
-const [initialBrightness, setInitialBrightness] = useState<number>(-1);
-
-useEffect(() => {
-  WindowBrightness.getBrightness().then(setInitialBrightness);
-}, []);
-
-const restore = async () => {
-  if (Platform.OS === 'ios' && initialBrightness !== -1) {
-    await WindowBrightness.setBrightness(initialBrightness);
-  } else {
-    await WindowBrightness.restoreBrightness();
-  }
-};
-```
-
-> **Note:** On iOS, if the user changes the system brightness while your app is open, `initialBrightness` will be stale. This is a known limitation of the iOS brightness API.
+> **Note (iOS):** the restore target is snapshotted the first time you call `setBrightness()`, not continuously. If the user manually changes the system brightness *after* that first call, restoring will bring back the earlier snapshot, not that later manual value. This is a limitation of the iOS brightness API.
 
 ## Error Codes
 

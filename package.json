@@ -1,6 +1,6 @@
 {
   "name": "@gabo2151/expo-window-brightness",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Expo module to control screen brightness at the window level",
   "main": "build/index.js",
   "types": "build/index.d.ts",

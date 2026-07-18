@@ -36,13 +36,16 @@ export async function setBrightness(value: BrightnessValue): Promise<void> {
 }
 
 /**
- * Restores the screen brightness to the system / user default.
+ * Restores the screen brightness to the value it had before the app started
+ * overriding it.
  *
  * On **Android** this clears the window-level override
  * (`BRIGHTNESS_OVERRIDE_NONE`), handing control back to the system.
  *
- * On **iOS** this is a **no-op**: Apple provides no public API to read and
- * restore the ambient/system brightness level.
+ * On **iOS** this restores the brightness captured right before the first
+ * {@link setBrightness} call in the current session. If {@link setBrightness}
+ * was never called, this is a no-op (Apple exposes no public system-brightness
+ * API).
  */
 export async function restoreBrightness(): Promise<void> {
   return ExpoWindowBrightnessModule.restoreBrightness();
@@ -59,5 +62,5 @@ export async function restoreBrightness(): Promise<void> {
  * @returns Brightness value, or `-1` on Android when no override is set.
  */
 export async function getBrightness(): Promise<number> {
-  return ExpoWindowBrightnessModule.getBrightness?.() ?? -1;
+  return ExpoWindowBrightnessModule.getBrightness();
 }

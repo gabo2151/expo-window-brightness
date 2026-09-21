@@ -19,7 +19,7 @@ config.resolver.nodeModulesPaths = [
 ];
 
 config.resolver.extraNodeModules = {
-  'expo-window-brightness': '..',
+  '@gabo2151/expo-window-brightness': '..',
 };
 
 config.watchFolders = [path.resolve(__dirname, '..')];

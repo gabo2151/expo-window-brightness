@@ -9,8 +9,8 @@
     "web": "expo start --web"
   },
   "dependencies": {
+    "@gabo2151/expo-window-brightness": "file:..",
     "expo": "~54.0.33",
-    "expo-window-brightness": "file:..",
     "react": "19.1.0",
     "react-native": "0.81.5"
   },

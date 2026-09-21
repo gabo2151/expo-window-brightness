@@ -3,8 +3,8 @@
   "compilerOptions": {
     "strict": true,
     "paths": {
-      "expo-window-brightness": ["../src/index"],
-      "expo-window-brightness/*": ["../src/*"]
+      "@gabo2151/expo-window-brightness": ["../src/index"],
+      "@gabo2151/expo-window-brightness/*": ["../src/*"]
     }
   }
 }

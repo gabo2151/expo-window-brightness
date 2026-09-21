@@ -55,8 +55,14 @@ if (providedTarball) {
   console.log(`\n=== Using provided tarball ===\n${tarball}`);
 } else {
   console.log(`\n=== Packing module ===`);
-  execFileSync('npm', ['pack', '--silent', '--pack-destination', out], { cwd: ROOT, stdio: 'inherit' });
-  tarball = join(out, readdirSync(out).find((f) => f.endsWith('.tgz')));
+  execFileSync('npm', ['pack', '--silent', '--pack-destination', out], {
+    cwd: ROOT,
+    stdio: 'inherit',
+  });
+  tarball = join(
+    out,
+    readdirSync(out).find((f) => f.endsWith('.tgz'))
+  );
 }
 
 // ── 2. Minimal app skeleton ──────────────────────────────────────────────────
@@ -65,7 +71,11 @@ mkdirSync(appDir, { recursive: true });
 
 writeFileSync(
   join(appDir, 'package.json'),
-  JSON.stringify({ name: `compat-sdk${sdk}`, version: '1.0.0', main: 'index.ts', private: true }, null, 2)
+  JSON.stringify(
+    { name: `compat-sdk${sdk}`, version: '1.0.0', main: 'index.ts', private: true },
+    null,
+    2
+  )
 );
 
 writeFileSync(

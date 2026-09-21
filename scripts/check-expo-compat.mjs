@@ -31,7 +31,8 @@ const SUPPORTED_SDKS = [52, 53, 54, 55, 56, 57];
 const REQUIRED_APIS = [
   {
     name: 'requireOptionalNativeModule (JS)',
-    find: (pkg) => fileContains(join(pkg, 'build/requireNativeModule.d.ts'), 'requireOptionalNativeModule'),
+    find: (pkg) =>
+      fileContains(join(pkg, 'build/requireNativeModule.d.ts'), 'requireOptionalNativeModule'),
   },
   {
     name: 'Queues.MAIN (Kotlin)',
@@ -43,12 +44,19 @@ const REQUIRED_APIS = [
   },
   {
     name: 'CodedException (Kotlin)',
-    find: (pkg) => existsSync(join(pkg, 'android/src/main/java/expo/modules/kotlin/exception/CodedException.kt')),
+    find: (pkg) =>
+      existsSync(
+        join(pkg, 'android/src/main/java/expo/modules/kotlin/exception/CodedException.kt')
+      ),
   },
 ];
 
 function sh(cmd, args, opts = {}) {
-  return execFileSync(cmd, args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], ...opts }).trim();
+  return execFileSync(cmd, args, {
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
+    ...opts,
+  }).trim();
 }
 
 /**
@@ -75,7 +83,8 @@ function grep(dir, re) {
   if (!existsSync(dir)) return false;
   for (const entry of readdirSync(dir, { withFileTypes: true, recursive: true })) {
     if (!entry.isFile() || !entry.name.endsWith('.kt')) continue;
-    if (re.test(readFileSync(join(entry.parentPath ?? entry.path, entry.name), 'utf8'))) return true;
+    if (re.test(readFileSync(join(entry.parentPath ?? entry.path, entry.name), 'utf8')))
+      return true;
   }
   return false;
 }
@@ -156,7 +165,9 @@ function main() {
       results.push({ sdk, expoVersion, coreVersion, missing, coreIosTarget, iosRaised });
 
       if (missing.length) {
-        problems.push(`SDK ${sdk} (expo-modules-core ${coreVersion}): missing ${missing.join(', ')}`);
+        problems.push(
+          `SDK ${sdk} (expo-modules-core ${coreVersion}): missing ${missing.join(', ')}`
+        );
       }
       if (iosRaised) {
         notes.push(

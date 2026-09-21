@@ -1,9 +1,9 @@
-import ExpoWindowBrightnessModule from './ExpoWindowBrightnessModule';
 import type {
   BrightnessErrorCode,
   BrightnessValue,
   ExpoWindowBrightnessNativeModule,
 } from './ExpoWindowBrightness.types';
+import ExpoWindowBrightnessModule from './ExpoWindowBrightnessModule';
 
 export type {
   BrightnessErrorCode,

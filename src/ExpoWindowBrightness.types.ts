@@ -17,10 +17,7 @@ export type BrightnessValue = number;
  * | `ERR_NO_ACTIVITY`      | Android: no active Activity to modify.                   |
  * | `ERR_UNAVAILABLE`      | The native module is not loaded in the current runtime.  |
  */
-export type BrightnessErrorCode =
-  | 'ERR_BRIGHTNESS_RANGE'
-  | 'ERR_NO_ACTIVITY'
-  | 'ERR_UNAVAILABLE';
+export type BrightnessErrorCode = 'ERR_BRIGHTNESS_RANGE' | 'ERR_NO_ACTIVITY' | 'ERR_UNAVAILABLE';
 
 /**
  * Shape of the native module backing this package.

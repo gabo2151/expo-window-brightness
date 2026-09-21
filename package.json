@@ -11,8 +11,10 @@
     "build": "expo-module build",
     "clean": "expo-module clean",
     "compat": "node scripts/check-expo-compat.mjs",
-    "lint": "expo-module lint",
+    "lint": "eslint src scripts eslint.config.js",
     "test": "expo-module test",
+    "typecheck": "tsc --noEmit",
+    "verify": "npm run lint && npm run typecheck && npm test && npm run build",
     "prepare": "expo-module prepare",
     "prepublishOnly": "expo-module prepublishOnly",
     "expo-module": "expo-module",
@@ -34,6 +36,9 @@
   },
   "bugs": {
     "url": "https://github.com/gabo2151/expo-window-brightness/issues"
+  },
+  "jest": {
+    "preset": "expo-module-scripts"
   },
   "dependencies": {},
   "devDependencies": {

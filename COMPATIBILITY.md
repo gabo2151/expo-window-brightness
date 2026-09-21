@@ -7,7 +7,7 @@
 | 57       | 57.x                | 16.4                 | Native build |
 | 56       | 56.x                | 16.4                 | Symbol check |
 | 55       | 55.x                | 15.1                 | Symbol check |
-| 54       | 3.x                 | 15.1                 | Symbol check |
+| 54       | 3.x                 | 15.1                 | Native build (Android, via `example/`) |
 | 53       | 2.5.x               | 15.1                 | Symbol check |
 | 52       | 2.2.x               | 15.1                 | Native build |
 | ≤ 51     | —                   | —                    | Not supported |

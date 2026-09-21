@@ -75,14 +75,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # Oldest and newest supported: the range's two ends are where it breaks.
-        # 54 is where `example/` lives and the one verified by hand so far.
-        #
-        # Heads-up: on SDK 57 (React Native 0.86, Gradle 9.3.1) the *upstream*
-        # @react-native/gradle-plugin failed to configure locally — even built
-        # standalone with its own wrapper — with "Unresolved reference 'libs'".
-        # If this job fails only on 57, check that before suspecting this module.
-        sdk: [52, 54, 57]
+        # Both ends of the supported range, plus 54 where `example/` lives.
+        # This job is what found that SDK 52 never worked on Android at all:
+        # `expo-module-gradle-plugin` does not exist before core 2.5.0.
+        sdk: [53, 54, 57]
     steps:
       - uses: actions/checkout@v7
 
@@ -115,7 +111,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        sdk: [52, 57]
+        sdk: [53, 57]
     steps:
       - uses: actions/checkout@v7
 

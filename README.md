@@ -32,7 +32,7 @@ npx expo install @gabo2151/expo-window-brightness
 
 Native module: needs `npx expo run:ios` / `run:android` or a [development build](https://docs.expo.dev/develop/development-builds/introduction/). **Does not work in Expo Go or on web.**
 
-Works on **Expo SDK 52–57** · iOS 15.1+ · Android 24+ · New Architecture · no config plugin. See [COMPATIBILITY.md](./COMPATIBILITY.md).
+Works on **Expo SDK 53–57** · iOS 15.1+ · Android 24+ · New Architecture · no config plugin. See [COMPATIBILITY.md](./COMPATIBILITY.md).
 
 ## Usage
 

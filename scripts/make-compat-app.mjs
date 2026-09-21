@@ -35,6 +35,33 @@ function run(cmd, args, cwd) {
   execFileSync(cmd, args, { cwd, stdio: 'inherit', env: { ...process.env, CI: '1' } });
 }
 
+function capture(cmd, args) {
+  return execFileSync(cmd, args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
+}
+
+/**
+ * The react / react-native that belong to an SDK, taken from Expo's own
+ * template for it.
+ *
+ * `npx expo install react react-native` cannot be used here: on an SDK older
+ * than the latest it resolved to the newest react-native published (0.87 into
+ * an SDK 54 app) and then broke its own CLI part-way through the install. The
+ * template is the version pairing Expo actually ships, and it is a plain
+ * package.json.
+ */
+function templateVersions(sdkMajor) {
+  const deps = JSON.parse(
+    capture('npm', [
+      'view',
+      `expo-template-blank-typescript@sdk-${sdkMajor}`,
+      'dependencies',
+      '--json',
+    ])
+  );
+
+  return ['expo', 'react', 'react-native'].map((name) => `${name}@${deps[name]}`);
+}
+
 const sdk = arg('sdk');
 const out = resolve(arg('out', join(ROOT, '.compat-app')));
 const platform = arg('platform', 'ios');
@@ -120,11 +147,14 @@ export default function App() {
 `
 );
 
-// ── 3. Install the SDK, then let Expo pick matching react/react-native ───────
+// ── 3. Install the SDK's own expo/react/react-native, plus this module ───────
 console.log(`\n=== Installing Expo SDK ${sdk} ===`);
-run('npm', ['install', `expo@sdk-${sdk}`, '--no-audit', '--no-fund'], appDir);
-run('npx', ['expo', 'install', 'react', 'react-native'], appDir);
-run('npm', ['install', tarball, '--no-audit', '--no-fund'], appDir);
+const versions = templateVersions(sdk);
+console.log(versions.join('  '));
+
+// One install, so npm resolves the whole graph at once instead of relaying a
+// half-installed tree between commands.
+run('npm', ['install', ...versions, tarball, '--no-audit', '--no-fund'], appDir);
 
 // ── 4. Prebuild the native project ───────────────────────────────────────────
 console.log(`\n=== Prebuilding (${platform}) ===`);

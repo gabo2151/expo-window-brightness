@@ -43,6 +43,13 @@ previously reached the native layer as garbage.
 
 ### Changed
 
+- **The supported range is now Expo SDK 53–57, down from a claimed 52.**
+  `android/build.gradle` applies `expo-module-gradle-plugin`, which first
+  shipped in `expo-modules-core` 2.5.0 (SDK 53) — on SDK 52 the consuming app
+  never configured at all. `peerDependencies` moves to `expo >= 53.0.0`,
+  `react >= 19`, `react-native >= 0.79`. This was found by making CI compile
+  the native code; nothing had ever checked it.
+
 - The README states that iOS brightness is **global and survives app
   termination**, and that `getBrightness()` on Android returns your own
   override rather than the screen's actual brightness. Both were previously

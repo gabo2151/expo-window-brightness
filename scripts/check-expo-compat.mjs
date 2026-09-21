@@ -24,8 +24,15 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 
-/** Expo SDK majors this module claims to support, per the README table. */
-const SUPPORTED_SDKS = [52, 53, 54, 55, 56, 57];
+/**
+ * Expo SDK majors this module claims to support, per the README table.
+ *
+ * 52 is out: `expo-module-gradle-plugin`, which `android/build.gradle` applies,
+ * first shipped in expo-modules-core 2.5.0 (SDK 53). On SDK 52 the consuming
+ * app fails with "Plugin [id: 'expo-module-gradle-plugin'] was not found".
+ * iOS on 52 is fine, but a half-supported SDK is not worth documenting.
+ */
+const SUPPORTED_SDKS = [53, 54, 55, 56, 57];
 
 /** Symbols the native code references. Keep in sync with the native sources. */
 const REQUIRED_APIS = [
@@ -62,6 +69,14 @@ const REQUIRED_APIS = [
   {
     name: 'OnAppEntersForeground (Swift)',
     find: (pkg) => grepSwift(pkg, /func\s+OnAppEntersForeground/),
+  },
+  {
+    // Applied by android/build.gradle. Absent before core 2.5.0 (SDK 53), and
+    // its absence is not a Kotlin symbol error — the consuming app just fails
+    // to configure. This module claimed SDK 52 support for a year because
+    // nothing checked it.
+    name: 'expo-module-gradle-plugin (Gradle)',
+    find: (pkg) => existsSync(join(pkg, 'expo-module-gradle-plugin')),
   },
 ];
 
@@ -174,7 +189,7 @@ function main() {
       //   ExpoModulesCore: ExpoWindowBrightness (iOS=16.4)
       // — so the pod builds at 16.4 regardless of what we declare. Keeping our
       // declaration at the floor is deliberate: raising it to 16.4 would lock
-      // out SDK 52-55 apps that still target iOS 15.x and gain nothing.
+      // out SDK 53-55 apps that still target iOS 15.x and gain nothing.
       // Report it, don't fail on it.
       const iosRaised = coreIosTarget != null && !isAtLeast(ourIosTarget, coreIosTarget);
 

@@ -49,13 +49,13 @@ Two tiers, both in CI:
 use. **Add to it whenever the native code starts depending on something new** —
 that is what makes the compatibility table a claim rather than a hope.
 
-### Known upstream issue
+### Local-only Gradle quirk
 
 On SDK 57 (React Native 0.86, Gradle 9.3.1) the upstream
-`@react-native/gradle-plugin` failed to configure locally — even built
-standalone with its own wrapper — with `Unresolved reference 'libs'`. If the
-Android job fails only on 57, check that before suspecting this module. The
-Android build is verified on SDK 54 through `example/`.
+`@react-native/gradle-plugin` fails to configure **on some machines** — even
+built standalone with its own wrapper — with `Unresolved reference 'libs'`.
+It builds fine on GitHub runners. If it bites locally, trust CI over your
+laptop, or build against SDK 54 through `example/` instead.
 
 ## Adding a new Expo SDK
 
@@ -73,9 +73,9 @@ Android build is verified on SDK 54 through `example/`.
 
 ## Why one package, not a branch per SDK
 
-The native code has not changed across SDK 52–57 — the same Kotlin and the same
+The native code has not changed across SDK 53–57 — the same Kotlin and the same
 Swift compile against all of them. Mirroring Expo's majors would mean publishing
-six identical packages and giving up the ability to signal this package's *own*
+five identical packages and giving up the ability to signal this package's *own*
 breaking changes through semver.
 
 A branch is only warranted when the native source itself must diverge, not when

@@ -81,11 +81,7 @@ All three brightness functions return a `Promise`. Full behaviour per platform i
 
 ## Contributing
 
-```shell
-npm ci
-npm run verify   # lint, typecheck, tests, build
-npm run compat   # check the supported Expo SDK range
-```
+See [CONTRIBUTING.md](./CONTRIBUTING.md).
 
 ## License
 

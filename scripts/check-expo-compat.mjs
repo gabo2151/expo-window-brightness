@@ -49,6 +49,11 @@ const REQUIRED_APIS = [
         join(pkg, 'android/src/main/java/expo/modules/kotlin/exception/CodedException.kt')
       ),
   },
+  {
+    // What re-applies the override after an Activity recreation.
+    name: 'OnActivityEntersForeground (Kotlin)',
+    find: (pkg) => grep(join(pkg, 'android/src/main/java'), /fun\s+OnActivityEntersForeground/),
+  },
 ];
 
 function sh(cmd, args, opts = {}) {

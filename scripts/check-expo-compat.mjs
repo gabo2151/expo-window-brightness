@@ -54,6 +54,15 @@ const REQUIRED_APIS = [
     name: 'OnActivityEntersForeground (Kotlin)',
     find: (pkg) => grep(join(pkg, 'android/src/main/java'), /fun\s+OnActivityEntersForeground/),
   },
+  {
+    // What hands the global iOS brightness back while the app is away.
+    name: 'OnAppEntersBackground (Swift)',
+    find: (pkg) => grepSwift(pkg, /func\s+OnAppEntersBackground/),
+  },
+  {
+    name: 'OnAppEntersForeground (Swift)',
+    find: (pkg) => grepSwift(pkg, /func\s+OnAppEntersForeground/),
+  },
 ];
 
 function sh(cmd, args, opts = {}) {
@@ -83,16 +92,18 @@ function fileContains(path, needle) {
   return existsSync(path) && readFileSync(path, 'utf8').includes(needle);
 }
 
-/** Recursive regex search over a directory tree. */
-function grep(dir, re) {
+/** Recursive regex search over a directory tree, limited to one extension. */
+function grep(dir, re, ext = '.kt') {
   if (!existsSync(dir)) return false;
   for (const entry of readdirSync(dir, { withFileTypes: true, recursive: true })) {
-    if (!entry.isFile() || !entry.name.endsWith('.kt')) continue;
+    if (!entry.isFile() || !entry.name.endsWith(ext)) continue;
     if (re.test(readFileSync(join(entry.parentPath ?? entry.path, entry.name), 'utf8')))
       return true;
   }
   return false;
 }
+
+const grepSwift = (pkg, re) => grep(join(pkg, 'ios'), re, '.swift');
 
 /** "15.1" -> [15, 1], for comparison. */
 const parseVersion = (v) => v.split('.').map(Number);

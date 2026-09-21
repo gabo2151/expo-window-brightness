@@ -4,33 +4,34 @@
 
 /**
  * Valid brightness range accepted by {@link setBrightness}.
- * Must be a number in [0.0, 1.0].
+ * Must be a finite number in [0.0, 1.0].
  */
 export type BrightnessValue = number;
 
 /**
- * Payload emitted by the `onBrightnessChange` event (reserved for future use).
- */
-export type BrightnessChangeEventPayload = {
-  /** New brightness value in the [0.0, 1.0] range. */
-  value: BrightnessValue;
-};
-
-/**
- * Native module event map.
- * Currently unused — kept here for forward-compatibility if we add
- * a native brightness-change listener in the future.
- */
-export type ExpoWindowBrightnessModuleEvents = {
-  onBrightnessChange: (params: BrightnessChangeEventPayload) => void;
-};
-
-/**
- * Error codes thrown by the native module.
+ * Error codes surfaced by this module.
  *
- * | Code                  | Meaning                                              |
- * |-----------------------|------------------------------------------------------|
- * | `ERR_BRIGHTNESS_RANGE` | Value passed to `setBrightness` is outside [0, 1]. |
- * | `ERR_NO_ACTIVITY`      | Android: no active Activity to modify.             |
+ * | Code                   | Meaning                                                  |
+ * |------------------------|----------------------------------------------------------|
+ * | `ERR_BRIGHTNESS_RANGE` | Value passed to `setBrightness` is outside [0, 1].       |
+ * | `ERR_NO_ACTIVITY`      | Android: no active Activity to modify.                   |
+ * | `ERR_UNAVAILABLE`      | The native module is not loaded in the current runtime.  |
  */
-export type BrightnessErrorCode = 'ERR_BRIGHTNESS_RANGE' | 'ERR_NO_ACTIVITY';
+export type BrightnessErrorCode =
+  | 'ERR_BRIGHTNESS_RANGE'
+  | 'ERR_NO_ACTIVITY'
+  | 'ERR_UNAVAILABLE';
+
+/**
+ * Shape of the native module backing this package.
+ *
+ * Exported so it can be used to type a mock in tests. Application code should
+ * call the functions exported from the package root instead of reaching for
+ * the native module directly — they add argument validation and a friendly
+ * error when the native module is missing.
+ */
+export interface ExpoWindowBrightnessNativeModule {
+  setBrightness(value: BrightnessValue): Promise<void>;
+  restoreBrightness(): Promise<void>;
+  getBrightness(): Promise<number>;
+}

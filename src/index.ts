@@ -1,16 +1,74 @@
 import ExpoWindowBrightnessModule from './ExpoWindowBrightnessModule';
-import type { BrightnessValue } from './ExpoWindowBrightness.types';
+import type {
+  BrightnessErrorCode,
+  BrightnessValue,
+  ExpoWindowBrightnessNativeModule,
+} from './ExpoWindowBrightness.types';
+
+export type {
+  BrightnessErrorCode,
+  BrightnessValue,
+  ExpoWindowBrightnessNativeModule,
+} from './ExpoWindowBrightness.types';
+
+// ---------------------------------------------------------------------------
+// Errors
+// ---------------------------------------------------------------------------
+
+/**
+ * Thrown when the native module is not present in the current runtime.
+ *
+ * The usual causes are running on web (this package is Android/iOS only),
+ * running in Expo Go, or not having rebuilt the native app after installing
+ * the package.
+ */
+export class BrightnessUnavailableError extends Error {
+  readonly code: BrightnessErrorCode = 'ERR_UNAVAILABLE';
+
+  constructor() {
+    super(
+      '[expo-window-brightness] Native module not found. This package supports ' +
+        'Android and iOS only, and needs a native rebuild after installation ' +
+        '(`npx expo run:android` / `npx expo run:ios`, or a new development ' +
+        'build). It does not work on web or in Expo Go.'
+    );
+    this.name = 'BrightnessUnavailableError';
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
+/**
+ * Validates the argument at runtime, not just at compile time.
+ *
+ * A plain `value < 0 || value > 1` check lets `NaN` through (both comparisons
+ * are false), and callers from untyped JS can pass anything at all — both end
+ * up writing garbage into the native window attributes.
+ */
 function assertBrightnessRange(value: number): void {
-  if (value < 0 || value > 1) {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value < 0 || value > 1) {
     throw new RangeError(
-      `[expo-window-brightness] setBrightness: value must be between 0.0 and 1.0, got ${value}`
+      `[expo-window-brightness] setBrightness: value must be a finite number ` +
+        `between 0.0 and 1.0, got ${typeof value} ${String(value)}`
     );
   }
+}
+
+function getNativeModule(): ExpoWindowBrightnessNativeModule {
+  if (!ExpoWindowBrightnessModule) {
+    throw new BrightnessUnavailableError();
+  }
+  return ExpoWindowBrightnessModule;
+}
+
+/**
+ * Whether the native module is loaded, and therefore whether the functions
+ * below can be called. Useful to feature-gate UI in apps that also run on web.
+ */
+export function isAvailable(): boolean {
+  return ExpoWindowBrightnessModule != null;
 }
 
 // ---------------------------------------------------------------------------
@@ -18,49 +76,63 @@ function assertBrightnessRange(value: number): void {
 // ---------------------------------------------------------------------------
 
 /**
- * Sets the screen brightness at the **window** level.
+ * Sets the screen brightness.
  *
- * On **Android** this overrides the system brightness only for the current
- * window; other apps are unaffected.
+ * On **Android** this is a window-level override: it applies only to your
+ * app's window, other apps are unaffected, and Android drops it automatically
+ * when your app goes to the background.
  *
- * On **iOS** this sets `UIScreen.main.brightness`, which is a global value.
- * Apple does not provide a window-scoped API.
+ * On **iOS** there is no window-scoped API. This sets `UIScreen.main.brightness`,
+ * which is the **global device brightness** — it affects the whole system, it
+ * also turns off auto-brightness, and it persists after your app is
+ * backgrounded or terminated. Call {@link restoreBrightness} before you are
+ * done to hand it back.
  *
  * @param value - Brightness level in the range [0.0, 1.0].
- * @throws {RangeError} if `value` is outside [0.0, 1.0] (JS-side guard).
- * @throws Native `ERR_BRIGHTNESS_RANGE` if the native layer rejects the value.
+ * @throws {RangeError} if `value` is not a finite number in [0.0, 1.0].
+ * @throws {BrightnessUnavailableError} if the native module is not loaded.
+ * @throws Native `ERR_NO_ACTIVITY` on Android when there is no active Activity.
  */
 export async function setBrightness(value: BrightnessValue): Promise<void> {
   assertBrightnessRange(value);
-  return ExpoWindowBrightnessModule.setBrightness(value);
+  return getNativeModule().setBrightness(value);
 }
 
 /**
- * Restores the screen brightness to the value it had before the app started
- * overriding it.
+ * Gives brightness control back to the system.
  *
  * On **Android** this clears the window-level override
- * (`BRIGHTNESS_OVERRIDE_NONE`), handing control back to the system.
+ * (`BRIGHTNESS_OVERRIDE_NONE`), so the system or auto-brightness setting takes
+ * over immediately.
  *
  * On **iOS** this restores the brightness captured right before the first
- * {@link setBrightness} call in the current session. If {@link setBrightness}
- * was never called, this is a no-op (Apple exposes no public system-brightness
- * API).
+ * {@link setBrightness} call of the current session. If {@link setBrightness}
+ * was never called, it is a no-op — Apple exposes no public API to read the
+ * "system" brightness, so there is nothing else to restore to.
+ *
+ * @throws {BrightnessUnavailableError} if the native module is not loaded.
+ * @throws Native `ERR_NO_ACTIVITY` on Android when there is no active Activity.
  */
 export async function restoreBrightness(): Promise<void> {
-  return ExpoWindowBrightnessModule.restoreBrightness();
+  return getNativeModule().restoreBrightness();
 }
 
 /**
- * Returns the current brightness level.
+ * Reads back the current brightness.
  *
- * On **Android**, returns the window-level brightness override in [0.0, 1.0],
- * or **-1** when no override is active (the system brightness is in control).
+ * On **Android** this returns *your window's override*, not the screen's
+ * actual brightness: a value in [0.0, 1.0] if you set one, or **-1** when no
+ * override is active. Android does not expose the effective screen brightness
+ * to an app without permissions, so -1 means "the system is in control", not
+ * "the screen is off".
  *
- * On **iOS**, returns the current `UIScreen.main.brightness` in [0.0, 1.0].
+ * On **iOS** this returns the real global `UIScreen.main.brightness`, always in
+ * [0.0, 1.0].
  *
- * @returns Brightness value, or `-1` on Android when no override is set.
+ * @returns Brightness in [0.0, 1.0], or `-1` on Android when no override is set.
+ * @throws {BrightnessUnavailableError} if the native module is not loaded.
+ * @throws Native `ERR_NO_ACTIVITY` on Android when there is no active Activity.
  */
 export async function getBrightness(): Promise<number> {
-  return ExpoWindowBrightnessModule.getBrightness();
+  return getNativeModule().getBrightness();
 }

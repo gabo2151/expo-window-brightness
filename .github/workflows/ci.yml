@@ -42,8 +42,11 @@ jobs:
 
       # Every native job installs this exact tarball, so they test what npm
       # ships rather than the working tree.
+      # `--pack-destination` does not create the directory.
       - name: Pack
-        run: npm pack --pack-destination /tmp/pkg
+        run: |
+          mkdir -p /tmp/pkg
+          npm pack --pack-destination /tmp/pkg
 
       - uses: actions/upload-artifact@v7
         with:
@@ -106,7 +109,7 @@ jobs:
 
   # ── iOS: does CocoaPods resolve, and does the Swift compile? ────────────────
   ios:
-    name: iOS ${{ matrix.sdk == 57 && 'build' || 'pod install' }} (SDK ${{ matrix.sdk }})
+    name: iOS build (SDK ${{ matrix.sdk }})
     needs: js
     runs-on: macos-latest
     strategy:

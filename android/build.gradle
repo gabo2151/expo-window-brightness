@@ -1,18 +1,33 @@
+import groovy.json.JsonSlurper
+
 plugins {
   id 'com.android.library'
   id 'expo-module-gradle-plugin'
 }
 
 group = 'expo.modules.windowbrightness'
-version = '1.1.0'
+
+// Read from package.json rather than repeating it: npm is the release source of
+// truth, and a hand-copied version here only ever drifts.
+def packageVersion = new JsonSlurper().parse(file('../package.json')).version
+def semver = packageVersion.split('-')[0].tokenize('.').collect { it.toInteger() }
+
+version = packageVersion
 
 android {
   namespace "expo.modules.windowbrightness"
+
   defaultConfig {
-    versionCode 2
-    versionName "1.1.0"
+    // Expo's autolinking reads these off every module project. Leaving them out
+    // is not "cleaning up a library that does not need them" — it fails the
+    // consuming app's build with:
+    //   A problem occurred configuring project ':gabo2151-expo-window-brightness'.
+    //   > 'android.defaultConfig.versionName' is not defined
+    versionCode semver[0] * 10000 + semver[1] * 100 + semver[2]
+    versionName packageVersion
   }
-  lintOptions {
-    abortOnError false
+
+  lint {
+    abortOnError true
   }
 }

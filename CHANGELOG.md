@@ -31,6 +31,11 @@ previously reached the native layer as garbage.
 - Android: the brightness override is re-applied after an Activity recreation.
   A rotation, theme change or locale change threw away the window holding it,
   and nothing put it back.
+- iOS: the global brightness is handed back when the app leaves the foreground
+  and taken again when it returns, so closing the app no longer leaves the
+  device at whatever the app set. Android already behaved this way, via the OS.
+  Returning to the foreground re-snapshots, so a brightness the user changed by
+  hand while the app was away is the one they get back.
 - The native bridge is typed. It was `any`, so the `Promise<void>` on every
   function was an unchecked assertion.
 - iOS: the screen is resolved from the active window scene, with

@@ -82,11 +82,12 @@ export function isAvailable(): boolean {
  * app's window, other apps are unaffected, and Android drops it automatically
  * when your app goes to the background.
  *
- * On **iOS** there is no window-scoped API. This sets `UIScreen.main.brightness`,
- * which is the **global device brightness** — it affects the whole system, it
- * also turns off auto-brightness, and it persists after your app is
- * backgrounded or terminated. Call {@link restoreBrightness} before you are
- * done to hand it back.
+ * On **iOS** there is no window-scoped API, so this sets the **global device
+ * brightness**: while your app is on screen you are changing the whole device,
+ * and auto-brightness is switched off as a side effect. The module hands the
+ * brightness back when your app leaves the foreground and takes it again when
+ * you return, so backgrounding or closing the app does not leave the device
+ * changed. Call {@link restoreBrightness} when you are done with it.
  *
  * @param value - Brightness level in the range [0.0, 1.0].
  * @throws {RangeError} if `value` is not a finite number in [0.0, 1.0].
@@ -105,10 +106,12 @@ export async function setBrightness(value: BrightnessValue): Promise<void> {
  * (`BRIGHTNESS_OVERRIDE_NONE`), so the system or auto-brightness setting takes
  * over immediately.
  *
- * On **iOS** this restores the brightness captured right before the first
- * {@link setBrightness} call of the current session. If {@link setBrightness}
- * was never called, it is a no-op — Apple exposes no public API to read the
- * "system" brightness, so there is nothing else to restore to.
+ * On **iOS** this restores the brightness captured when the module last took
+ * the override — on the first {@link setBrightness} call, and again each time
+ * your app returns to the foreground. Re-snapshotting on return is what keeps
+ * it honest: a brightness the user changed by hand while your app was away is
+ * the one they get back. If {@link setBrightness} was never called, it is a
+ * no-op, since Apple exposes no public API to read the "system" brightness.
  *
  * @throws {BrightnessUnavailableError} if the native module is not loaded.
  * @throws Native `ERR_NO_ACTIVITY` on Android when there is no active Activity.

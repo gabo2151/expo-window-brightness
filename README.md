@@ -15,12 +15,14 @@ Android and iOS are **not** equivalent, and the difference decides whether this 
 
 | | Android | iOS |
 |---|---|---|
-| Scope | Your app's window | **The whole device** |
-| Reverts on background | Yes, automatically | **No** |
-| Survives app termination | No | **Yes** |
+| Scope while in the foreground | Your app's window | **The whole device** |
+| Reverts on background | Yes, by the OS | Yes, by this module |
+| Survives app termination | No | No |
 | Turns off auto-brightness | No | **Yes** |
 
-Android has a real window-level override. Apple exposes no window-scoped API, so on iOS this writes the global device brightness — **you must call `restoreBrightness()` yourself**, or the user's phone keeps whatever you set.
+Android has a real window-level override. Apple exposes no window-scoped API, so on iOS this writes the **global device brightness** — while your app is on screen, you are changing the whole device, and auto-brightness is switched off as a side effect.
+
+This module hands that brightness back whenever your app leaves the foreground and takes it again when you return, so a user who closes your app does not find their phone stuck at whatever you set. Still call `restoreBrightness()` when you are done with it.
 
 ## Install
 
@@ -72,7 +74,7 @@ All three brightness functions return a `Promise`. Full behaviour per platform i
 
 ## Limitations
 
-- **iOS:** brightness is global and is not restored automatically on background or termination. `restoreBrightness()` returns to the value captured before your *first* `setBrightness()` call, not to a later manual change.
+- **iOS:** brightness is global while your app is in the foreground. It is handed back automatically on background and re-applied on return; a crash straight from the foreground is the one case that can leave it changed.
 - **Android:** the override lives on the Activity's window. Recreating it (rotation, theme or locale change) drops the override; call `setBrightness()` again if you need it back.
 - **Android:** on many devices `0.0` means "backlight off", not "dimmest readable". Clamp to ~`0.05`.
 - **Web:** unsupported. Guard with `isAvailable()`.

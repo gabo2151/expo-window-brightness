@@ -1,0 +1,72 @@
+name: Expo compatibility
+
+# This module is small and stable, so it will sit untouched for months while
+# Expo keeps shipping SDKs. Rather than find out from a bug report that the
+# README's compatibility table has gone stale, check it on a schedule.
+on:
+  schedule:
+    # Mondays, 06:00 UTC
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/check-expo-compat.mjs'
+      - 'ios/ExpoWindowBrightness.podspec'
+      - '.github/workflows/expo-compat.yml'
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check:
+    name: Check supported Expo SDKs
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Check Expo SDK compatibility
+        id: check
+        run: |
+          set +e
+          node scripts/check-expo-compat.mjs | tee report.txt
+          echo "exit_code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
+
+      - name: Open or update drift issue
+        if: steps.check.outputs.exit_code != '0'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TITLE: 'Expo compatibility drift detected'
+        run: |
+          BODY=$(printf 'The scheduled compatibility check found drift between this module and the currently published Expo SDKs.\n\n```\n%s\n```\n\nFix the module (or `SUPPORTED_SDKS` in `scripts/check-expo-compat.mjs`), update the README table, then re-run the workflow.\n\n_Run: %s/%s/actions/runs/%s_\n' \
+            "$(cat report.txt)" "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID")
+
+          # Reuse one issue instead of opening a new one every Monday.
+          EXISTING=$(gh issue list --state open --label expo-compat --limit 1 --json number --jq '.[0].number')
+
+          if [ -n "$EXISTING" ]; then
+            gh issue comment "$EXISTING" --body "$BODY"
+          else
+            gh label create expo-compat --description "Expo SDK compatibility drift" --color BFD4F2 --force
+            gh issue create --title "$TITLE" --label expo-compat --body "$BODY"
+          fi
+
+      - name: Close drift issue when clean
+        if: steps.check.outputs.exit_code == '0'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          EXISTING=$(gh issue list --state open --label expo-compat --limit 1 --json number --jq '.[0].number')
+          if [ -n "$EXISTING" ]; then
+            gh issue close "$EXISTING" --comment "Compatibility check is green again. Closing automatically."
+          fi
+
+      - name: Fail the run on drift
+        if: steps.check.outputs.exit_code != '0'
+        run: exit 1

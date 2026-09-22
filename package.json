@@ -1,6 +1,6 @@
 {
   "name": "@gabo2151/expo-window-brightness",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Expo module to control screen brightness at the window level",
   "main": "build/index.js",
   "types": "build/index.d.ts",
@@ -10,22 +10,38 @@
   "scripts": {
     "build": "expo-module build",
     "clean": "expo-module clean",
-    "lint": "expo-module lint",
+    "compat": "node scripts/check-expo-compat.mjs",
+    "lint": "eslint src scripts eslint.config.js",
     "test": "expo-module test",
+    "typecheck": "tsc --noEmit",
+    "verify": "npm run lint && npm run typecheck && npm test && npm run build",
     "prepare": "expo-module prepare",
     "prepublishOnly": "expo-module prepublishOnly",
     "expo-module": "expo-module",
     "open:ios": "xed example/ios",
     "open:android": "open -a \"Android Studio\" example/android"
   },
-  "keywords": [
-    "android",
-    "brightness",
-    "expo",
-    "expo-window-brightness",
-    "ExpoWindowBrightness",
+  "files": [
+    "android/build.gradle",
+    "android/src/main",
+    "build",
+    "src",
+    "!src/__tests__",
     "ios",
-    "react-native"
+    "expo-module.config.json",
+    "CHANGELOG.md",
+    "COMPATIBILITY.md"
+  ],
+  "keywords": [
+    "expo",
+    "expo-module",
+    "react-native",
+    "brightness",
+    "screen-brightness",
+    "window-brightness",
+    "backlight",
+    "android",
+    "ios"
   ],
   "repository": {
     "type": "git",
@@ -33,6 +49,9 @@
   },
   "bugs": {
     "url": "https://github.com/gabo2151/expo-window-brightness/issues"
+  },
+  "jest": {
+    "preset": "expo-module-scripts"
   },
   "dependencies": {},
   "devDependencies": {
@@ -42,9 +61,9 @@
     "react-native": "0.83.9"
   },
   "peerDependencies": {
-    "expo": ">=52.0.0",
-    "react": ">=18.0.0",
-    "react-native": ">=0.71.0"
+    "expo": ">=53.0.0",
+    "react": ">=19.0.0",
+    "react-native": ">=0.79.0"
   },
   "engines": {
     "node": ">=20.19.0"

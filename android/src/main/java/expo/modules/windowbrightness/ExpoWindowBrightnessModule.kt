@@ -1,58 +1,79 @@
 package expo.modules.windowbrightness
 
-import expo.modules.kotlin.modules.Module
-import expo.modules.kotlin.modules.ModuleDefinition
+import android.app.Activity
+import android.view.WindowManager
 import expo.modules.kotlin.exception.CodedException
 import expo.modules.kotlin.functions.Queues
-import android.view.WindowManager
+import expo.modules.kotlin.modules.Module
+import expo.modules.kotlin.modules.ModuleDefinition
 
 class ExpoWindowBrightnessModule : Module() {
+  /**
+   * The last value the app asked for, or null when no override is active.
+   *
+   * The override lives on the Activity's window, and Android throws that window
+   * away whenever the Activity is recreated — a rotation, a theme change, a
+   * locale change. Remembering the value is what lets us put it back.
+   */
+  private var appliedBrightness: Float? = null
+
   override fun definition() = ModuleDefinition {
     Name("ExpoWindowBrightness")
 
-    // MARK: - setBrightness
-    // Runs directly on the UI thread (runOnQueue(Queues.MAIN)) so the returned
-    // promise resolves *after* the window attributes have been applied.
+    // Re-apply after an Activity recreation. Without this, rotating the device
+    // silently drops the brightness the app asked for, and nothing says so.
+    OnActivityEntersForeground {
+      val value = appliedBrightness ?: return@OnActivityEntersForeground
+      val activity = appContext.currentActivity ?: return@OnActivityEntersForeground
+
+      activity.runOnUiThread { activity.applyBrightness(value) }
+    }
+
+    // Runs directly on the UI thread so the returned promise resolves *after*
+    // the window attributes have been applied.
     AsyncFunction("setBrightness") { value: Float ->
       if (value < 0f || value > 1f) {
         throw BrightnessRangeException(value)
       }
 
-      val activity = appContext.currentActivity
-        ?: throw NoActivityException()
+      val activity = appContext.currentActivity ?: throw NoActivityException()
 
-      val layoutParams = activity.window.attributes
-      layoutParams.screenBrightness = value
-      activity.window.attributes = layoutParams
+      activity.applyBrightness(value)
+      appliedBrightness = value
     }.runOnQueue(Queues.MAIN)
 
-    // MARK: - restoreBrightness
-    // Resets the window-level override so the system / auto-brightness
-    // setting takes over again.
+    // Resets the window-level override so the system / auto-brightness setting
+    // takes over again.
     AsyncFunction("restoreBrightness") {
-      val activity = appContext.currentActivity
-        ?: throw NoActivityException()
+      val activity = appContext.currentActivity ?: throw NoActivityException()
 
-      val layoutParams = activity.window.attributes
-      layoutParams.screenBrightness = WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
-      activity.window.attributes = layoutParams
+      activity.applyBrightness(WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE)
+      appliedBrightness = null
     }.runOnQueue(Queues.MAIN)
 
-    // MARK: - getBrightness
-    // Returns the current window-level brightness override.
-    // Returns -1.0 when no override is set (system brightness is active),
-    // which matches WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE.
+    // Returns the current window-level override, or -1.0 when none is set
+    // (BRIGHTNESS_OVERRIDE_NONE). Deliberately reads the window rather than
+    // `appliedBrightness`: the window is the truth, the field is only a memo.
     AsyncFunction("getBrightness") {
-      val activity = appContext.currentActivity
-        ?: throw NoActivityException()
+      val activity = appContext.currentActivity ?: throw NoActivityException()
 
       activity.window.attributes.screenBrightness
     }.runOnQueue(Queues.MAIN)
   }
 }
 
+/**
+ * Window attributes are a value object: mutating the instance is not enough,
+ * it has to be assigned back for the change to take effect.
+ */
+private fun Activity.applyBrightness(value: Float) {
+  val layoutParams = window.attributes
+  layoutParams.screenBrightness = value
+  window.attributes = layoutParams
+}
+
 // ---------------------------------------------------------------------------
-// Typed exceptions — surfaces as structured errors on the JS side
+// Typed exceptions — surface as structured errors on the JS side
 // ---------------------------------------------------------------------------
 
 internal class BrightnessRangeException(value: Float) : CodedException(

@@ -5,90 +5,83 @@
 [![npm downloads](https://img.shields.io/npm/dm/@gabo2151/expo-window-brightness)](https://npm-stat.com/charts.html?package=@gabo2151/expo-window-brightness)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-A tiny, zero-dependency Expo module to control screen brightness at the **window** level. It overrides the brightness only while your app is in the foreground and **never declares any Android permission** — no `WRITE_SETTINGS`, no runtime prompts.
+Brighten or dim the screen from your Expo app. Three functions, no runtime dependencies, **no Android permissions** — no `WRITE_SETTINGS`, no runtime prompts.
 
-> **Why not `expo-brightness`?** The official [`expo-brightness`](https://docs.expo.dev/versions/latest/sdk/brightness/) also supports window-level brightness, but because it additionally exposes the global *system* brightness API, its config plugin declares `android.permission.WRITE_SETTINGS`. If all you need is to brighten your own app while it's in the foreground, this module does exactly that with a 3-function API and no permissions.
+> Unlike [`expo-brightness`](https://docs.expo.dev/versions/latest/sdk/brightness/), which declares `android.permission.WRITE_SETTINGS` because it also exposes the global *system* brightness API.
 
-## Installation
+## Before you pick this
+
+Android and iOS are **not** equivalent, and the difference decides whether this package fits:
+
+| | Android | iOS |
+|---|---|---|
+| Scope while in the foreground | Your app's window | **The whole device** |
+| Reverts on background | Yes, by the OS | Yes, by this module |
+| Survives app termination | No | No |
+| Turns off auto-brightness | No | **Yes** |
+
+Android has a real window-level override. Apple exposes no window-scoped API, so on iOS this writes the **global device brightness** — while your app is on screen, you are changing the whole device, and auto-brightness is switched off as a side effect.
+
+This module hands that brightness back whenever your app leaves the foreground and takes it again when you return, so a user who closes your app does not find their phone stuck at whatever you set. Still call `restoreBrightness()` when you are done with it.
+
+## Install
 
 ```shell
 npx expo install @gabo2151/expo-window-brightness
 ```
 
-## Supported Platforms
+Native module: needs `npx expo run:ios` / `run:android` or a [development build](https://docs.expo.dev/develop/development-builds/introduction/). **Does not work in Expo Go or on web.**
 
-| Platform | Supported |
-|----------|-----------|
-| Android  | ✅         |
-| iOS      | ✅         |
+Works on **Expo SDK 53–57** · iOS 15.1+ · Android 24+ · New Architecture · no config plugin. See [COMPATIBILITY.md](./COMPATIBILITY.md).
 
 ## Usage
 
 ```tsx
-import { View, Button } from 'react-native';
 import * as WindowBrightness from '@gabo2151/expo-window-brightness';
+import { useEffect } from 'react';
 
-export default function App() {
-  const setMaxBrightness = async () => {
-    await WindowBrightness.setBrightness(1.0);
+useEffect(() => {
+  WindowBrightness.setBrightness(1.0);
+
+  // On iOS the brightness is global and outlives your app — always restore it.
+  return () => {
+    WindowBrightness.restoreBrightness().catch(() => {});
   };
-
-  const checkBrightness = async () => {
-    const level = await WindowBrightness.getBrightness();
-    console.log('Current level:', level);
-  };
-
-  const restoreSystemBrightness = async () => {
-    await WindowBrightness.restoreBrightness();
-  };
-
-  return (
-    <View>
-      <Button title="Max Brightness" onPress={setMaxBrightness} />
-      <Button title="Check Brightness" onPress={checkBrightness} />
-      <Button title="Restore Default" onPress={restoreSystemBrightness} />
-    </View>
-  );
-}
+}, []);
 ```
+
+A runnable version with error handling is in [`example/App.tsx`](./example/App.tsx).
 
 ## API
 
-### `setBrightness(value: number): Promise<void>`
+| | |
+|---|---|
+| `setBrightness(value)` | Sets brightness. `value` must be a finite number in `[0.0, 1.0]`. |
+| `getBrightness()` | Android: **your override**, or `-1` when none is set. iOS: the real global brightness. |
+| `restoreBrightness()` | Hands control back to the system. |
+| `isAvailable()` | Whether the native module is loaded. Use it to gate UI on web. |
 
-Sets the screen brightness. `value` must be between `0.0` (darkest) and `1.0` (brightest).
+All three brightness functions return a `Promise`. Full behaviour per platform is in the JSDoc — your editor will show it.
 
-- On **Android**, overrides brightness at the window level — only your app is affected.
-- On **iOS**, sets `UIScreen.main.brightness`, which is a global value.
+### Errors
 
-Throws a `RangeError` on the JS side if `value` is outside `[0.0, 1.0]`. The native layer also rejects with `ERR_BRIGHTNESS_RANGE` as a safety net.
+| Code | Thrown as | When |
+|---|---|---|
+| — | `RangeError` | `setBrightness` got a non-finite number or one outside `[0.0, 1.0]`. |
+| `ERR_BRIGHTNESS_RANGE` | native `CodedError` | Native safety net for the same. |
+| `ERR_NO_ACTIVITY` | native `CodedError` | Android: no active Activity. |
+| `ERR_UNAVAILABLE` | `BrightnessUnavailableError` | Native module not loaded — web, Expo Go, or no native rebuild. |
 
----
+## Limitations
 
-### `getBrightness(): Promise<number>`
+- **iOS:** brightness is global while your app is in the foreground. It is handed back automatically on background and re-applied on return; a crash straight from the foreground is the one case that can leave it changed.
+- **Android:** the override lives on the Activity's window. Recreating it (rotation, theme or locale change) drops the override; call `setBrightness()` again if you need it back.
+- **Android:** on many devices `0.0` means "backlight off", not "dimmest readable". Clamp to ~`0.05`.
+- **Web:** unsupported. Guard with `isAvailable()`.
 
-Returns the current brightness level as a number in `[0.0, 1.0]`.
+## Contributing
 
-- On **Android**, returns the active window-level override, or `-1` when no override is set (system brightness is in control).
-- On **iOS**, returns the current `UIScreen.main.brightness` value.
-
----
-
-### `restoreBrightness(): Promise<void>`
-
-Restores the brightness to the value it had before your app started overriding it.
-
-- On **Android**, clears the window-level override (`BRIGHTNESS_OVERRIDE_NONE`). The system or auto-brightness setting takes over immediately.
-- On **iOS**, restores the brightness captured right before the **first** `setBrightness()` call of the current session. If `setBrightness()` was never called, it's a no-op (Apple exposes no public system-brightness API).
-
-> **Note (iOS):** the restore target is snapshotted the first time you call `setBrightness()`, not continuously. If the user manually changes the system brightness *after* that first call, restoring will bring back the earlier snapshot, not that later manual value. This is a limitation of the iOS brightness API.
-
-## Error Codes
-
-| Code                   | Description                                                                |
-|------------------------|----------------------------------------------------------------------------|
-| `ERR_BRIGHTNESS_RANGE` | Value passed to `setBrightness` is outside `[0.0, 1.0]`.                   |
-| `ERR_NO_ACTIVITY`      | Android only: no active Activity was found to apply the brightness change. |
+See [CONTRIBUTING.md](./CONTRIBUTING.md).
 
 ## License
 

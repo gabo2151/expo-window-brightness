@@ -1,3 +1,8 @@
+# IMPORTANT: this file must keep the name `ci.yml`.
+# The npm trusted publisher (OIDC) for @gabo2151/expo-window-brightness is bound
+# to gabo2151/expo-window-brightness + the workflow FILENAME. Renaming this file
+# breaks publishing with an auth error that never mentions the filename.
+
 name: CI & Publish
 
 on:
@@ -7,27 +12,24 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
+# The only thing that ever mattered about this module is whether the Swift and
+# the Kotlin compile. Type-checking 130 lines of TypeScript was never the test.
 jobs:
-  # ── Build & Type-check ──────────────────────────────────────────────────────
-  build:
-    name: Build & Type-check
+  # ── JS: types, build, tarball ───────────────────────────────────────────────
+  js:
+    name: Type-check & build
     runs-on: ubuntu-latest
-
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - name: Setup Node.js 24
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
-          node-version: 24
+          node-version-file: '.nvmrc'
           cache: npm
 
-      - name: Install dependencies
-        run: npm ci
+      - run: npm ci
 
       - name: Type-check
         run: npx tsc --noEmit
@@ -35,10 +37,120 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Inspect the tarball contents
+        run: npm pack --dry-run
+
+      # Every native job installs this exact tarball, so they test what npm
+      # ships rather than the working tree.
+      # `--pack-destination` does not create the directory.
+      - name: Pack
+        run: |
+          mkdir -p /tmp/pkg
+          npm pack --pack-destination /tmp/pkg
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: tarball
+          path: /tmp/pkg/*.tgz
+          retention-days: 1
+
+  # ── Expo SDK symbol compatibility (cheap, no compiler) ──────────────────────
+  compat:
+    name: Expo SDK symbol check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: '.nvmrc'
+
+      - run: node scripts/check-expo-compat.mjs
+
+  # ── Android: does the Kotlin actually compile? ──────────────────────────────
+  android:
+    name: Android build (SDK ${{ matrix.sdk }})
+    needs: js
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Both ends of the supported range, plus 54 where `example/` lives.
+        # This job is what found that SDK 52 never worked on Android at all:
+        # `expo-module-gradle-plugin` does not exist before core 2.5.0.
+        sdk: [53, 54, 57]
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: '.nvmrc'
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: tarball
+          path: /tmp/pkg
+
+      - name: Generate an Expo ${{ matrix.sdk }} app with the module installed
+        run: node scripts/make-compat-app.mjs --sdk ${{ matrix.sdk }} --out /tmp/compat --platform android --tarball "$(ls /tmp/pkg/*.tgz)"
+
+      - name: Compile
+        working-directory: /tmp/compat/app/android
+        run: ./gradlew :app:assembleDebug --no-daemon
+
+  # ── iOS: does CocoaPods resolve, and does the Swift compile? ────────────────
+  ios:
+    name: iOS build (SDK ${{ matrix.sdk }})
+    needs: js
+    runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        sdk: [53, 57]
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: '.nvmrc'
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: tarball
+          path: /tmp/pkg
+
+      - name: Generate an Expo ${{ matrix.sdk }} app with the module installed
+        run: node scripts/make-compat-app.mjs --sdk ${{ matrix.sdk }} --out /tmp/compat --platform ios --tarball "$(ls /tmp/pkg/*.tgz)"
+
+      # Resolution only. This is what caught that Expo auto-raises our pod's
+      # deployment target to match ExpoModulesCore on SDK 56+, which is why the
+      # podspec can stay at 15.1 and still serve SDK 57.
+      - name: pod install
+        working-directory: /tmp/compat/app/ios
+        run: pod install
+
+      # Compiling is much slower than resolving, so only the newest SDK gets it.
+      # A Swift error would show up on any of them.
+      - name: Compile
+        if: matrix.sdk == 57
+        working-directory: /tmp/compat/app/ios
+        run: |
+          xcodebuild -workspace compatsdk57.xcworkspace \
+            -scheme compatsdk57 \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            build CODE_SIGNING_ALLOWED=NO | tail -40
+
   # ── Publish ─────────────────────────────────────────────────────────────────
   publish-npm:
-    name: Publish to npm
-    needs: build
+    name: Stage release on npm
+    needs: [js, compat, android, ios]
     if: github.event_name == 'release'
     runs-on: ubuntu-latest
 
@@ -47,16 +159,51 @@ jobs:
       id-token: write
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - name: Setup Node.js 24
-        uses: actions/setup-node@v4
+      # Node 24 for npm >= 11.5.1, which trusted publishing (OIDC) requires.
+      - uses: actions/setup-node@v7
         with:
-          node-version: 24
+          node-version-file: '.nvmrc'
           registry-url: https://registry.npmjs.org/
+          cache: npm
 
-      - name: Install dependencies
-        run: npm ci
+      - run: npm ci
 
-      - name: Publish to npm
-        run: npm publish --provenance --access public
+      # Nothing stopped you tagging v1.2.0 and shipping 1.1.0 before this.
+      - name: Check the release tag matches package.json
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          PKG="$(node -p "require('./package.json').version")"
+          if [ "$TAG" != "$PKG" ]; then
+            echo "::error::Release tag '$TAG' does not match package.json version '$PKG'"
+            exit 1
+          fi
+          echo "Publishing version $PKG"
+
+      - name: Build
+        run: npm run build
+
+      # STAGED, not published: the trusted publisher may stage without 2FA, and
+      # approving is what makes the version installable. That keeps a human on
+      # the one step that cannot be undone, and is why no long-lived npm token
+      # exists in this repository.
+      #
+      # The stage id can't be read back with `npm stage list` — OIDC authorises
+      # the staging call, not a session — so it is lifted out of the output here.
+      - name: Stage the release on npm
+        run: |
+          set -o pipefail
+          npm stage publish --provenance --access public | tee stage.log
+          ID="$(sed -n 's/.*staged with id \([0-9a-f-]*\).*/\1/p' stage.log)"
+          {
+            echo "### \`v${GITHUB_REF_NAME#v}\` is staged, not yet public"
+            echo
+            echo 'Approve it — this is the step that asks for 2FA:'
+            echo
+            echo '```sh'
+            echo "npm stage approve ${ID:-<stage-id>}"
+            echo '```'
+            echo
+            echo "To discard it instead: \`npm stage reject ${ID:-<stage-id>}\`"
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -102,13 +102,15 @@ jobs:
       # The runner image ships no NDK, so Gradle downloads ~1 GB of it mid-build
       # and gives up on the first corrupt download ("Archive is not a ZIP
       # archive"), failing a random matrix leg. Install it up front, with retries.
+      # A bad download can also stall for an hour before failing, hence the
+      # per-attempt timeout; a healthy install takes well under a minute.
       - name: Install the NDK
         run: |
           NDK=$(sed -n 's/^ndkVersion = "\(.*\)"/\1/p' /tmp/compat/app/node_modules/react-native/gradle/libs.versions.toml)
           test -n "$NDK" || { echo "::error::ndkVersion not found in react-native's libs.versions.toml"; exit 1; }
           echo "NDK $NDK"
           for attempt in 1 2 3; do
-            "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "ndk;$NDK" >/dev/null && exit 0
+            timeout 10m "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "ndk;$NDK" >/dev/null && exit 0
             echo "::warning::NDK install attempt $attempt failed, retrying"
             rm -rf "$ANDROID_HOME/ndk/$NDK"
             sleep 10

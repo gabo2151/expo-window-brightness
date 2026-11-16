@@ -99,6 +99,22 @@ jobs:
       - name: Generate an Expo ${{ matrix.sdk }} app with the module installed
         run: node scripts/make-compat-app.mjs --sdk ${{ matrix.sdk }} --out /tmp/compat --platform android --tarball "$(ls /tmp/pkg/*.tgz)"
 
+      # The runner image ships no NDK, so Gradle downloads ~1 GB of it mid-build
+      # and gives up on the first corrupt download ("Archive is not a ZIP
+      # archive"), failing a random matrix leg. Install it up front, with retries.
+      - name: Install the NDK
+        run: |
+          NDK=$(sed -n 's/^ndkVersion = "\(.*\)"/\1/p' /tmp/compat/app/node_modules/react-native/gradle/libs.versions.toml)
+          test -n "$NDK" || { echo "::error::ndkVersion not found in react-native's libs.versions.toml"; exit 1; }
+          echo "NDK $NDK"
+          for attempt in 1 2 3; do
+            "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "ndk;$NDK" >/dev/null && exit 0
+            echo "::warning::NDK install attempt $attempt failed, retrying"
+            rm -rf "$ANDROID_HOME/ndk/$NDK"
+            sleep 10
+          done
+          exit 1
+
       - name: Compile
         working-directory: /tmp/compat/app/android
         run: ./gradlew :app:assembleDebug --no-daemon
